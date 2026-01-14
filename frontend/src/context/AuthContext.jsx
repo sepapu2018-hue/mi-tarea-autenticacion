@@ -7,11 +7,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Verificar si hay un usuario en localStorage al cargar
+  // MODIFICADO: Verificar autenticación llamando al servidor (no a localStorage)
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
+    const checkAuthentication = async () => {
+      try {
+        // Intentamos obtener el perfil del usuario usando la cookie de sesión
+        const data = await authService.getProfile();
+        setUser(data.user); // Si hay cookie válida, guardamos el usuario
+      } catch (error) {
+        setUser(null); // Si no hay cookie o expiró, el usuario es null
+      } finally {
+        setLoading(false); // Terminamos la carga
+      }
+    };
+
+    checkAuthentication();
   }, []);
 
   // Función de login
@@ -36,9 +46,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Función de logout
-  const logout = () => {
-    authService.logout();
+  // MODIFICADO: Función de logout ahora es asíncrona para avisar al servidor
+  const logout = async () => {
+    await authService.logout(); // Pide al servidor que borre la cookie
     setUser(null);
   };
 
@@ -63,7 +73,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Hook personalizado para usar el contexto
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

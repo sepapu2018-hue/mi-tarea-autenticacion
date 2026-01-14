@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser'); // ← AGREGADO
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -7,8 +8,14 @@ const authRoutes = require('./routes/auth');
 const app = express();
 
 // Middlewares
-app.use(cors());
+// MODIFICADO: CORS ahora permite credenciales y especifica el origen
+app.use(cors({
+  origin: 'http://localhost:5173', // Asegúrate que coincida con tu puerto de Vite
+  credentials: true 
+}));
+
 app.use(express.json());
+app.use(cookieParser()); // ← AGREGADO: Para que el server lea req.cookies
 
 // Rutas
 app.use('/api/auth', authRoutes);
@@ -24,8 +31,8 @@ app.get('/api/protected', authenticateToken, (req, res) => {
 
 // Middleware de autenticación
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  // MODIFICADO: Ahora lee el token desde las cookies
+  const token = req.cookies.token; 
 
   if (!token) {
     return res.status(401).json({ error: 'Token no proporcionado' });
@@ -44,12 +51,13 @@ function authenticateToken(req, res, next) {
 // Ruta de bienvenida
 app.get('/', (req, res) => {
   res.json({ 
-    message: '🔐 API de Autenticación',
+    message: '🔐 API de Autenticación con Cookies',
     endpoints: {
       register: 'POST /api/auth/register',
       login: 'POST /api/auth/login',
-      profile: 'GET /api/auth/me (requiere token)',
-      protected: 'GET /api/protected (requiere token)'
+      logout: 'POST /api/auth/logout', // Agregado
+      profile: 'GET /api/auth/me (requiere cookie)',
+      protected: 'GET /api/protected (requiere cookie)'
     }
   });
 });
@@ -57,5 +65,4 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
-  console.log(`📚 Documentación: http://localhost:${PORT}`);
 });
